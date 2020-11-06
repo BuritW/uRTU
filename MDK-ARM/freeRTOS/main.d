@@ -23,6 +23,8 @@ freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_gpio_ex.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma_ex.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cortex.h
+freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_adc.h
+freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_adc_ex.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_flash.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_flash_ex.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_i2c.h
@@ -33,9 +35,11 @@ freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim_ex.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart.h
 freertos\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h
+freertos\main.o: ../Inc/adc.h
+freertos\main.o: ../Inc/tim.h
 freertos\main.o: ../Inc/usart.h
 freertos\main.o: ../Inc/gpio.h
-freertos\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h
+freertos\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/freeRTOS.h
 freertos\main.o: ../Inc/FreeRTOSConfig.h
 freertos\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h
 freertos\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h
@@ -51,3 +55,4 @@ freertos\main.o: ../Middlewares/Third_Party/FreeRTOS/Source/include/event_groups
 freertos\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
 freertos\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h
 freertos\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+freertos\main.o: D:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h

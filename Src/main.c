@@ -21,12 +21,14 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 //#include "cmsis_os.h"
+#include "adc.h"
+#include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "FreeRTOS.h"
+#include "freeRTOS.h"
 #include "task.h"
 #include "timers.h"
 #include "queue.h"
@@ -35,6 +37,8 @@
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
+#include "math.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,7 +71,7 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+//
 //Create Task defines
 TaskHandle_t INPUTCAPTUREhandler;
 void INPUTCAPTURE_Task(void *pvParameters);
@@ -95,9 +99,8 @@ SemaphoreHandle_t LWIPSem;
 SemaphoreHandle_t SendingSem;
 SemaphoreHandle_t UartSem;
 
-// resource related
-int resource[3] = {111,222,333};
-int indx = 0;
+int check =0;
+double adcVol=0;
 // uart related
 uint8_t rx_data = 0;
 
@@ -111,7 +114,7 @@ uint8_t rx_data = 0;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  
   /* USER CODE END 1 */
   
 
@@ -134,7 +137,12 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART3_UART_Init();
+  MX_ADC1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
+	HAL_TIM_Base_Start(&htim2);
+	HAL_ADC_Start_IT(&hadc1);
+	
 	
 	HAL_UART_Receive_IT(&huart3, &rx_data, 1);
 
@@ -147,34 +155,35 @@ int main(void)
   if (ModBusSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create ModBusSem\n\n", 28, 100);
  else HAL_UART_Transmit(&huart3, (uint8_t *) "ModBusSem Semaphore Created successfully\n\n", 41, 1000);
  
-  if (InputCaptureSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create InputCaptureSem\n\n", 28, 100);
- else HAL_UART_Transmit(&huart3, (uint8_t *) "InputCaptureSem Semaphore Created successfully\n\n", 50, 1000);
+  if (InputCaptureSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create InputCaptureSem\n\n", 100, 1000);
+ else HAL_UART_Transmit(&huart3, (uint8_t *) "InputCaptureSem Semaphore Created successfully\n\n", 100, 1000);
  
- if (LWIPSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create LWIPSem\n\n", 28, 100);
+ if (LWIPSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create LWIPSem\n\n", 28, 1000);
  else HAL_UART_Transmit(&huart3, (uint8_t *) "LWIPSem Semaphore Created successfully\n\n", 41, 1000);
  
- if (LWIPSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create ADCSem\n\n", 28, 100);
+ if (ADCSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create ADCSem\n\n", 28, 1000);
  else HAL_UART_Transmit(&huart3, (uint8_t *) "ADCSem Semaphore Created successfully\n\n", 41, 1000);
  
- if (LWIPSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create SendingSem\n\n", 28, 100);
+ if (SendingSem == NULL)HAL_UART_Transmit(&huart3, (uint8_t *) "Unable to Create SendingSem\n\n", 28, 1000);
  else HAL_UART_Transmit(&huart3, (uint8_t *) "SendingSem Semaphore Created successfully\n\n", 50, 1000);
  
  // create Tasks
  
  xTaskCreate(INPUTCAPTURE_Task, "INPUTCAPTURE", 128, NULL, 5, &INPUTCAPTUREhandler);
  xTaskCreate(MODBUS_Task, "MODBUS", 128, NULL, 2, &MODBUShandler);
- xTaskCreate(ADC_Task, "ADC", 128, NULL, 4, &ADChandler);
+ xTaskCreate(ADC_Task, "ADC", 128, NULL, 3, &ADChandler);
  //xTaskCreate(RECEIVE_Task, "RECEIVE", 128, NULL, 1, &RECEIVEhandler);
  xTaskCreate(MQTT_Task, "MQTT", 128, NULL, 1, &MQTThandler);
- xTaskCreate(LWIP_Task, "LWIP", 128, NULL, 3, &LWIPhandler);
+ xTaskCreate(LWIP_Task, "LWIP", 128, NULL, 4, &LWIPhandler);
  
  vTaskStartScheduler();
  
   /* USER CODE END 2 */
 
-  /* Call init function for freertos objects (in freertos.c) */
-  MX_FREERTOS_Init(); 
 
+
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -246,93 +255,42 @@ void SystemClock_Config(void)
 
 void INPUTCAPTURE_Task(void *pvParameters)
 {
-	char sresource[3];
-	int semcount =0;
-	char ssemcount[2];
-
+	
 
  // Give  semaphores at the beginning...
-	xSemaphoreGive(InputCaptureSem);
+//	xSemaphoreGive(InputCaptureSem);
 
-	
-	while (1)
+	vTaskSuspend(INPUTCAPTUREhandler);
+	for (;;)
 	{
-		xSemaphoreTake(InputCaptureSem, portMAX_DELAY);
-	
+
+	  
 		char str[150];
-		strcpy(str, "Entered INPUTCAPTURE Task\n Abount to ACQUIRE the Semaphore \n");
-		semcount = uxSemaphoreGetCount(InputCaptureSem);
-		sprintf(ssemcount, "%d", semcount);
-		strcat(str,"Tokens available ");
-		strcat(str,ssemcount);
+		strcpy(str, "/nEntered INPUTCAPTURE Task\n Abount to ACQUIRE the Semaphore \n");
+
 		strcat(str,"\n\n");
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
 		
-		//xSemaphoreTake(CountingSem, portMAX_DELAY);
+
 		
-		sprintf(sresource, "%d", resource[indx]);
-		strcpy(str, "Leaving INPUTCAPTURE Task\n Data ACCESSED is:: ");
-		strcat(str,sresource);
-		strcat(str,"\n Not releasing the Semaphore\n\n\n");
+	
+		strcpy(str, "Leaving INPUTCAPTURE Task\n \n");
+	
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
+
+
+	
+    vTaskSuspend(INPUTCAPTUREhandler);
+
 		
-		indx++;
-		if (indx>2) indx=0;
-		
-		
-  	xSemaphoreGive(InputCaptureSem);
-    vTaskDelay(2000);
-		//vTaskDelete(NULL);
 			
 	}
 }
 
-void MODBUS_Task(void *pvParameters)
-{
-	char sresource[3];
-	int semcount =0;
-	char ssemcount[2];
-	xSemaphoreGive(ModBusSem);
-
-	
-	while (1)
-	{ 
-		
-		xSemaphoreTake(ModBusSem, portMAX_DELAY);
-	  
-		char str[150];
-		strcpy(str, "Entered MODBUS Task\n Abount to ACQUIRE the Semaphore\n\n");
-		semcount = uxSemaphoreGetCount(ModBusSem);
-		sprintf(ssemcount, "%d", semcount);
-		strcat(str,"Tokens available ");
-		strcat(str,ssemcount);
-		strcat(str,"\n\n");
-		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
-		
-		//xSemaphoreTake(CountingSem, portMAX_DELAY);
-		
-		sprintf(sresource, "%d", resource[indx]);
-		strcpy(str, "Leaving MODBUS Task\n Data ACCESSED is:: ");
-		strcat(str,sresource);
-		strcat(str,"\n Not releasing the Semaphore\n\n\n");
-		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
-		
-		indx++;
-		if (indx>2) indx=0;
-	
-	
-	
-	xSemaphoreGive(ModBusSem);	
-  vTaskDelay(2000);
-	//vTaskDelete(NULL); 
-	}
-}
 
 void ADC_Task(void *pvParameters)
 {
-	char sresource[3];
-	int semcount =0;
-	char ssemcount[2];
+
 	xSemaphoreGive(ADCSem);
 	while (1)
 	{
@@ -340,69 +298,107 @@ void ADC_Task(void *pvParameters)
 		
 		char str[150];
 		strcpy(str, "Entered ADC Task\n Abount to ACQUIRE the Semaphore\n\n");
-		semcount = uxSemaphoreGetCount(ADCSem);
-		sprintf(ssemcount, "%d", semcount);
-		strcat(str,"Tokens available ");
-		strcat(str,ssemcount);
+	
 		strcat(str,"\n\n");
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
 		
-		//xSemaphoreTake(CountingSem, portMAX_DELAY);
+
 		
-		sprintf(sresource, "%d", resource[indx]);
-		strcpy(str, "Leaving ADC Task\n Data ACCESSED is:: ");
-		strcat(str,sresource);
-		strcat(str,"\n Not releasing the Semaphore\n\n\n");
+	
+		strcpy(str, "Leaving ADC Task\n \n\n");
+		
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
 		
-		indx++;
-		if (indx>2) indx=0;
 	
 		
 		xSemaphoreGive(ADCSem);
-	  vTaskDelay(2000);
-		
-		//vTaskSuspend(&ADChandler);
-  //vTaskDelete(NULL); 
+		vTaskSuspend(ADChandler);
 
+		
+ 
+
+	}
+}
+
+void MODBUS_Task(void *pvParameters)
+{
+	
+	xSemaphoreGive(ModBusSem);
+  
+	
+	while (1)
+	{ 
+		
+		xSemaphoreTake(ModBusSem, portMAX_DELAY);
+
+		vTaskResume(LWIPhandler);
+		
+		
+	
+ 
+		char str[150];
+		strcpy(str, "Entered MODBUS Task\n Abount to ACQUIRE the Semaphore\n\n");
+		
+		strcat(str,"\n\n");
+		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
+		
+
+		
+	
+		strcpy(str, "Leaving MODBUS Task\n \n\n");
+	
+		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
+		
+		
+	
+	
+	xSemaphoreGive(ModBusSem);
+	vTaskSuspend(LWIPhandler);
+	vTaskSuspend(MODBUShandler);
+	//vTaskDelay(2100);
+	
 	}
 }
 
 void MQTT_Task(void *pvParameters)
 {
-	char sresource[3];
-	int semcount =0;
-	char ssemcount[2];
+	
 	
 	
 	while (1)
 	{
 		
-		xSemaphoreTake(InputCaptureSem, portMAX_DELAY);
+	
 		xSemaphoreTake(ADCSem, portMAX_DELAY);
 		xSemaphoreTake(ModBusSem, portMAX_DELAY);
 	  
-	
+		vTaskResume(LWIPhandler);
+	  
    
 		char str[150];
 		strcpy(str, "Entered MQTT Task\n Abount to ACQUIRE the Semaphore\n\n");
 		
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
 		
-		//xSemaphoreTake(CountingSem, portMAX_DELAY);
+	
 		
-		sprintf(sresource, "%d", resource[indx]);
-		strcpy(str, "Leaving MQTT Task\n Data ACCESSED is:: ");
-		strcat(str,sresource);
-		strcat(str,"\n Not releasing the Semaphore\n\n\n");
+		
+		strcpy(str, "Leaving MQTT Task\n \n\n");
+		
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
 		
-		indx++;
-		if (indx>2) indx=0;
 		
+		check =2;
+		vTaskDelay(500);
 		
-		xSemaphoreGive(SendingSem);
-		vTaskDelay(2000);
+		xSemaphoreGive(ModBusSem);
+		xSemaphoreGive(ADCSem); 	
+		
+    vTaskSuspend(LWIPhandler);		
+	
+   	vTaskDelay(5000);
+		vTaskResume(ADChandler);
+		vTaskResume(MODBUShandler);
 	
 			
 	}
@@ -413,35 +409,71 @@ void LWIP_Task(void *pvParameters)
 	char sresource[3];
 	int semcount =0;
 	char ssemcount[2];
-  xSemaphoreGive(LWIPSem);
-
+  vTaskSuspend(LWIPhandler);
 	while (1)
 	{
-		xSemaphoreTake(LWIPSem, portMAX_DELAY);
-			
+
 		char str[150];
+		
+		if(check==0){
 		strcpy(str, "Entered LWIP Task\n Abount to ACQUIRE the Semaphore\n\n");
 		strcat(str," Setting uRTU IP\n\n");
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
-		vTaskDelay(2000);
+		check=1;
 		
-		xSemaphoreTake(SendingSem, portMAX_DELAY);
+		}
+	  
+		vTaskDelay(500);
+		
+	
+		if(check==2){
 		strcpy(str, "Send Data \n Leaving LWIP Task\n\n ");
 		HAL_UART_Transmit(&huart3, (uint8_t *)str, strlen(str), HAL_MAX_DELAY);
+		check = 1;
 		
-		xSemaphoreGive(InputCaptureSem); 
-		xSemaphoreGive(ADCSem); 
-		vTaskDelay(2000);
-		xSemaphoreGive(LWIPSem);
-		xSemaphoreGive(ModBusSem);
-	  xSemaphoreGive(SendingSem);
-	
-  //vTaskDelete(NULL); 
+		}
+		
 
 	}
 }
 
+void displayVOL(uint32_t input_vol)
+{
+	char vin[] = "Vin = ";
+	double volin = input_vol/pow(2,12.0f)*3.3 ;
+	char newline[] = "\n\r";
+	char Volin[sizeof(unsigned int)*8+1] ;
+	sprintf(Volin,"%.2f",volin);
+	
+	while(__HAL_UART_GET_FLAG(&huart3,UART_FLAG_TC)==RESET){};
+	HAL_UART_Transmit(&huart3,(uint8_t*) vin,strlen(vin),1000);	
+		
+	while(__HAL_UART_GET_FLAG(&huart3,UART_FLAG_TC)==RESET){};
+	HAL_UART_Transmit(&huart3,(uint8_t*) Volin,strlen(Volin),1000);
+	
+	while(__HAL_UART_GET_FLAG(&huart3,UART_FLAG_TC)==RESET){};
+	HAL_UART_Transmit(&huart3,(uint8_t*) newline,strlen(newline),1000);
+	
+}
 
+void displayHEX(uint32_t adc_input)
+{
+	char hex[sizeof(unsigned int)*8+1];
+	char ox[] = "0x";
+	char o = '0';
+	
+	sprintf(hex, "%x ", adc_input);
+	while(__HAL_UART_GET_FLAG(&huart3,UART_FLAG_TC)==RESET){};
+	HAL_UART_Transmit(&huart3,(uint8_t*) ox,strlen(ox),1000);
+	for(int i =1;i<=8-strlen(hex);i++)
+	{	
+	while(__HAL_UART_GET_FLAG(&huart3,UART_FLAG_TC)==RESET){};
+	HAL_UART_Transmit(&huart3,(uint8_t*) &o,1,1000); 
+	}
+	while(__HAL_UART_GET_FLAG(&huart3,UART_FLAG_TC)==RESET){};
+	HAL_UART_Transmit(&huart3,(uint8_t*) hex,strlen(hex),1000);	
+	
+}
 
 
 // UART CALLBACK FUNCTION
@@ -450,13 +482,22 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 		HAL_UART_Receive_IT(&huart3, &rx_data, 1);
 		if(rx_data == 'r'){
+			
+			BaseType_t InputCaptureResume;
+		
+			InputCaptureResume = xTaskResumeFromISR(INPUTCAPTUREhandler);
+			
+			portYIELD_FROM_ISR(InputCaptureResume);
+			
+			
 		// release the semaohore here 
 			/* The xHigherPriorityTaskWokn parameter must be initialized to pdFALSE as
 			it will get set to pdTRUE inside the interrupt safe API function if a 
 			context switch is required.	*/
-			BaseType_t xHigherPriorityTaskWokn = pdFALSE;
+			///BaseType_t xHigherPriorityTaskWokn = pdFALSE;
 			
-			xSemaphoreGiveFromISR(InputCaptureSem, &xHigherPriorityTaskWokn); // ISR SAFE VERSION
+			
+			///xSemaphoreGiveFromISR(InputCaptureSem, &xHigherPriorityTaskWokn); // ISR SAFE VERSION
 		//	xSemaphoreGiveFromISR(CountingSem, &xHigherPriorityTaskWokn); // ISR SAFE VERSION
 		//	xSemaphoreGiveFromISR(CountingSem, &xHigherPriorityTaskWokn); // ISR SAFE VERSION
 			
@@ -467,12 +508,23 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 			xHigherPriorityTaskWokn is still pdFALSE then calling
 			portEND_WEITCHING_ISR() will have no effect */
 			
-			portEND_SWITCHING_ISR(xHigherPriorityTaskWokn);
+		///	portEND_SWITCHING_ISR(xHigherPriorityTaskWokn);
 		}
 	
 	
 }
 
+void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc){
+	uint32_t adcVal;
+	if(hadc ->Instance==ADC1){
+	
+		adcVal = HAL_ADC_GetValue(hadc);
+		
+		adcVol = adcVal /pow(2,12.0f)*3.3;
+		
+}
+	
+}
 
 /* USER CODE END 4 */
 

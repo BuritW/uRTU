@@ -22,6 +22,8 @@ freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_h
 freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma.h
 freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_dma_ex.h
 freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_cortex.h
+freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_adc.h
+freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_adc_ex.h
 freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_flash.h
 freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_flash_ex.h
 freertos\stm32f7xx_hal_dma_ex.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_i2c.h
